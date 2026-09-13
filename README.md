@@ -18,13 +18,22 @@ Spread, slippage, swap, dan pergerakan harga riil tidak diperhitungkan.
 
 ## Fitur tambahan
 
-- **Favicon** grid ala batch trading (SVG inline, tidak perlu file terpisah).
+- **Icon lengkap** (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) +
+  `manifest.json`. File SVG data-URI saja tidak cukup untuk shortcut "Add to
+  Home Screen" di HP (Android butuh `manifest.json` dengan PNG, iOS Safari
+  butuh `apple-touch-icon` PNG terpisah) — sekarang semua sudah disediakan,
+  jadi ikon akan muncul saat halaman ditambahkan ke home screen.
 - **Auto-update checker**: setiap 60 detik halaman diam-diam mengambil ulang
   dirinya sendiri dengan `cache: 'no-store'`, membandingkan meta `app-version`.
   Jika versi di server berbeda dari yang sedang tampil, muncul banner
   "Versi baru tersedia" dengan tombol untuk memuat ulang paksa (bypass cache).
 - Meta `Cache-Control: no-cache, no-store, must-revalidate` ditambahkan agar
   browser tidak menyimpan cache halaman ini sendiri.
+
+**Penting:** upload semua file (`index.html`, `manifest.json`, `icon-192.png`,
+`icon-512.png`, `apple-touch-icon.png`) ke repo yang sama, sejajar (bukan di
+folder terpisah) — kalau hanya `index.html` yang diupload, ikon tidak akan
+ketemu dan home screen tetap pakai ikon default browser.
 
 ## Kenapa dulu terasa "tidak update" walau sudah tunggu lama?
 
