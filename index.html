@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="app-version" content="1.1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230e1310'/%3E%3Cg fill='none' stroke='%23c99a3b' stroke-width='3'%3E%3Crect x='9' y='9' width='16' height='16'/%3E%3Crect x='29' y='9' width='16' height='16'/%3E%3Crect x='9' y='29' width='16' height='16' fill='%23c99a3b' stroke='none'/%3E%3Crect x='29' y='29' width='16' height='16'/%3E%3Cpath d='M25 17h4M45 25v4M17 25v4' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E">
 <title>Kalkulator Batch — Tunggak Semi</title>
 <style>
   :root{
@@ -97,6 +102,14 @@
   .note b{color:var(--paper);}
   footer{padding:18px 28px; border-top:1px solid var(--line); color:var(--paper-dim); font-size:11px;}
   a{color:var(--gold);}
+  .update-banner{
+    margin-top:12px; padding:9px 12px; background:#2a2210; border:1px solid var(--gold-soft);
+    color:var(--gold); font-size:12px; border-radius:3px; display:inline-block;
+  }
+  .update-banner button{
+    background:var(--gold); border:none; color:#1b1607; font-weight:700; font-family:var(--mono);
+    padding:4px 9px; border-radius:2px; cursor:pointer; margin-left:6px; font-size:11px;
+  }
 </style>
 </head>
 <body>
@@ -105,6 +118,10 @@
   <h1>Kalkulator Batch — EA Tunggak Semi</h1>
   <div class="sub">Simulasi loss per batch, profit per batch, akumulasi loss/profit, dan modal yang dibutuhkan pada sistem batch averaging &amp; cutloss ala grid/martingale.</div>
   <span class="badge">estimasi non-kurva · dihitung via cache worker</span>
+  <span class="badge" id="versionBadge" style="margin-left:6px;"></span>
+  <div id="updateBanner" class="update-banner" style="display:none;">
+    Versi baru tersedia — <button id="reloadBtn">Muat ulang sekarang</button>
+  </div>
 </header>
 
 <main>
@@ -341,6 +358,36 @@ document.getElementById('calc').addEventListener('click', () => {
 
 // hitung otomatis saat load pertama
 worker.postMessage(readParams());
+
+// ---------- Auto-Update Checker ----------
+// GitHub Pages / CDN kadang menyimpan cache index.html lebih lama dari yang
+// diharapkan. Skrip ini secara berkala mengambil ulang halaman ini sendiri
+// dengan cache:'no-store' (memaksa bypass cache browser), membaca meta
+// "app-version", dan membandingkannya dengan versi yang sedang tampil.
+// Jika berbeda (artinya sudah ada file baru ter-deploy), tampilkan banner
+// untuk memuat ulang.
+const CURRENT_VERSION = document.querySelector('meta[name="app-version"]').content;
+document.getElementById('versionBadge').textContent = 'v' + CURRENT_VERSION;
+
+async function checkForUpdate(){
+  try{
+    const url = location.pathname + '?_=' + Date.now(); // cache-busting query
+    const res = await fetch(url, { cache: 'no-store' });
+    const html = await res.text();
+    const match = html.match(/name="app-version"\s+content="([^"]+)"/);
+    if(match && match[1] !== CURRENT_VERSION){
+      document.getElementById('updateBanner').style.display = 'inline-block';
+    }
+  }catch(err){ /* diam-diam gagal, tidak mengganggu penggunaan */ }
+}
+
+document.getElementById('reloadBtn').addEventListener('click', () => {
+  location.href = location.pathname + '?v=' + Date.now();
+});
+
+checkForUpdate();
+setInterval(checkForUpdate, 60000); // cek tiap 60 detik
+
 </script>
 </body>
 </html>
