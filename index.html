@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator Batch — Tunggak Semi</title>
+<style>
+  :root{
+    --ink:#0e1310;
+    --panel:#141a16;
+    --panel-2:#182019;
+    --line:#2a352c;
+    --paper:#eae6da;
+    --paper-dim:#a7aa9c;
+    --gold:#c99a3b;
+    --gold-soft:#8a7238;
+    --loss:#b3543f;
+    --profit:#5f9b6f;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --serif: "Fraunces", Georgia, serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ink); color:var(--paper);
+    font-family:var(--mono); font-size:14px; line-height:1.55;
+  }
+  @font-face{
+    font-family:"Fraunces";
+    src:local("Georgia");
+  }
+  header{
+    padding:38px 28px 22px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171d18,#141a16);
+  }
+  header h1{
+    font-family:var(--serif); font-weight:600; font-size:28px; margin:0 0 6px;
+    color:var(--paper); letter-spacing:0.2px;
+  }
+  header .sub{color:var(--paper-dim); font-size:13px; max-width:640px;}
+  header .badge{
+    display:inline-block; margin-top:12px; border:1px solid var(--gold-soft);
+    color:var(--gold); padding:3px 9px; font-size:11px; border-radius:2px;
+  }
+  main{
+    display:grid; grid-template-columns: 340px 1fr; gap:0; min-height:calc(100vh - 150px);
+  }
+  @media (max-width:860px){ main{grid-template-columns:1fr;} }
+  .panel{padding:24px; border-right:1px solid var(--line);}
+  .panel h2, .results h2{
+    font-family:var(--serif); font-size:15px; font-weight:600; color:var(--gold);
+    margin:22px 0 10px; text-transform:none;
+  }
+  .panel h2:first-child{margin-top:0;}
+  label{display:block; font-size:12px; color:var(--paper-dim); margin-bottom:4px;}
+  .field{margin-bottom:14px;}
+  input[type=number]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--paper);
+    padding:8px 9px; font-family:var(--mono); font-size:13px; border-radius:3px;
+  }
+  input[type=number]:focus{outline:none; border-color:var(--gold-soft);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .hint{font-size:11px; color:var(--paper-dim); margin-top:3px;}
+  button#calc{
+    width:100%; margin-top:18px; padding:11px; background:var(--gold); border:none;
+    color:#1b1607; font-family:var(--mono); font-weight:700; font-size:13px;
+    border-radius:3px; cursor:pointer; letter-spacing:0.3px;
+  }
+  button#calc:hover{background:#dcae4c;}
+  .status{font-size:11px; color:var(--paper-dim); margin-top:8px; min-height:14px;}
+  .results{padding:24px;}
+  .summary{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);
+    border:1px solid var(--line); margin-bottom:22px;
+  }
+  @media (max-width:700px){.summary{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:var(--panel); padding:14px 16px;}
+  .stat .k{font-size:10px; color:var(--paper-dim); text-transform:uppercase; letter-spacing:0.6px;}
+  .stat .v{font-family:var(--serif); font-size:20px; margin-top:4px;}
+  .stat .v.loss{color:var(--loss);}
+  .stat .v.profit{color:var(--profit);}
+  .stat .v.gold{color:var(--gold);}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:right; font-weight:600; color:var(--paper-dim); font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.5px; padding:8px 10px; border-bottom:1px solid var(--gold-soft);
+  }
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap;}
+  tbody tr:hover{background:var(--panel-2);}
+  td.loss{color:var(--loss);}
+  td.profit{color:var(--profit);}
+  td.warn{color:var(--gold);}
+  .note{
+    margin-top:20px; padding:14px 16px; background:var(--panel-2); border-left:2px solid var(--gold-soft);
+    font-size:12px; color:var(--paper-dim);
+  }
+  .note b{color:var(--paper);}
+  footer{padding:18px 28px; border-top:1px solid var(--line); color:var(--paper-dim); font-size:11px;}
+  a{color:var(--gold);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Kalkulator Batch — EA Tunggak Semi</h1>
+  <div class="sub">Simulasi loss per batch, profit per batch, akumulasi loss/profit, dan modal yang dibutuhkan pada sistem batch averaging &amp; cutloss ala grid/martingale.</div>
+  <span class="badge">estimasi non-kurva · dihitung via cache worker</span>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>Parameter Lot &amp; Batch</h2>
+    <div class="field">
+      <label>Initial Lot</label>
+      <input type="number" id="initialLot" value="0.01" step="0.01" min="0.01">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Posisi / Batch</label>
+        <input type="number" id="positionsPerBatch" value="10" step="1" min="1">
+      </div>
+      <div class="field">
+        <label>Max Batch (0=∞)</label>
+        <input type="number" id="maxBatchNumber" value="0" step="1" min="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>Jumlah Batch Disimulasikan</label>
+      <input type="number" id="simBatches" value="10" step="1" min="1" max="200">
+    </div>
+    <div class="field">
+      <label>Max Lot Limit (0=tanpa batas)</label>
+      <input type="number" id="maxLotLimit" value="0" step="0.01" min="0">
+    </div>
+
+    <h2>Jarak &amp; Cutloss</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Add Position (pips)</label>
+        <input type="number" id="addPositionPips" value="30" step="1">
+      </div>
+      <div class="field">
+        <label>Batch Cutloss (pips)</label>
+        <input type="number" id="batchCutLossPips" value="30" step="1">
+      </div>
+    </div>
+
+    <h2>Take Profit</h2>
+    <div class="row2">
+      <div class="field">
+        <label>TP (pips)</label>
+        <input type="number" id="tpPips" value="90" step="1">
+      </div>
+      <div class="field">
+        <label>TP (USD, 0=pakai pips)</label>
+        <input type="number" id="tpUsc" value="0" step="1" min="0">
+      </div>
+    </div>
+
+    <h2>Nilai Kontrak</h2>
+    <div class="field">
+      <label>Nilai per Pip / 1 Lot (USD)</label>
+      <input type="number" id="pipValue" value="1" step="0.01" min="0.01">
+      <div class="hint">XAUUSD umumnya ≈ 1 USD/pip/lot bila pip = 0.01 — cek spesifikasi broker Anda.</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Harga Acuan</label>
+        <input type="number" id="price" value="2650" step="1">
+      </div>
+      <div class="field">
+        <label>Leverage (1:x)</label>
+        <input type="number" id="leverage" value="500" step="1" min="1">
+      </div>
+    </div>
+    <div class="field">
+      <label>Contract Size / Lot</label>
+      <input type="number" id="contractSize" value="100" step="1" min="1">
+    </div>
+    <div class="field">
+      <label>Buffer Keamanan Modal (%)</label>
+      <input type="number" id="bufferPct" value="30" step="5" min="0">
+    </div>
+
+    <button id="calc">Hitung Batch</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="results">
+    <h2>Ringkasan hingga batch terakhir yang disimulasikan</h2>
+    <div class="summary" id="summary"></div>
+
+    <h2>Rincian per Batch</h2>
+    <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Batch</th>
+          <th>Total Lot</th>
+          <th>Loss Batch (USD)</th>
+          <th>Akumulasi Loss (USD)</th>
+          <th>Target Profit (USD)</th>
+          <th>Margin Dibutuhkan (USD)</th>
+          <th>Modal Diperlukan (USD)</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    </div>
+
+    <div class="note">
+      <b>Cara baca:</b> "Loss Batch" adalah estimasi rugi terealisasi bila seluruh posisi pada batch tersebut kena cutloss (grid penuh terisi lalu bergerak melawan sejauh Batch Cutloss Pips). "Target Profit" adalah profit basket yang harus tercapai batch tersebut untuk TP, sudah termasuk mengembalikan akumulasi loss batch sebelumnya. "Modal Diperlukan" = akumulasi loss batch sebelumnya + potensi floating loss batch berjalan + margin menahan grid penuh, ditambah buffer keamanan. Semua angka adalah estimasi berbasis logika grid EA (level demi level dari titik anchor), bukan hasil backtest — spread, slippage, swap, dan pergerakan harga aktual tidak diperhitungkan.
+    </div>
+  </div>
+</main>
+
+<footer>
+  Kalkulator estimasi untuk EA "Tunggak Semi" (batch averaging + cutloss). Gunakan sebagai alat bantu perencanaan risiko, bukan jaminan hasil trading.
+</footer>
+
+<script>
+// ---------- Cache Worker ----------
+// Semua perhitungan batch dijalankan di Web Worker terpisah, dengan memoization
+// berbasis hash input, supaya UI tidak nge-freeze saat mensimulasikan banyak batch
+// dan hasil yang sama tidak dihitung ulang.
+const workerSrc = `
+  const cache = new Map();
+  const CACHE_LIMIT = 50;
+
+  function normalizeLot(lot, maxLotLimit){
+    if(maxLotLimit > 0 && lot > maxLotLimit) lot = maxLotLimit;
+    lot = Math.round(lot / 0.01) * 0.01;
+    if(lot < 0.01) lot = 0.01;
+    return Math.round(lot * 100) / 100;
+  }
+
+  function computeBatches(p){
+    const {
+      initialLot, positionsPerBatch, maxBatchNumber, simBatches, maxLotLimit,
+      addPositionPips, batchCutLossPips, tpPips, tpUsc, pipValue,
+      price, leverage, contractSize, bufferPct
+    } = p;
+
+    let accumLot = 0;
+    let cumulativeLoss = 0;
+    const rows = [];
+
+    for(let n = 1; n <= simBatches; n++){
+      const resetToOne = (maxBatchNumber > 0 && n > maxBatchNumber);
+      const effN = resetToOne ? 1 : n;
+
+      // lot tiap posisi dalam batch efektif ke-effN
+      const lot1 = effN <= 1 ? initialLot : accumLot;
+      const lotRest = initialLot * effN;
+      const lots = [normalizeLot(lot1, maxLotLimit)];
+      for(let j = 2; j <= positionsPerBatch; j++) lots.push(normalizeLot(lotRest, maxLotLimit));
+
+      const totalLot = lots.reduce((a,b)=>a+b, 0);
+
+      // loss per posisi j (1=anchor/tertua ... P=terbaru) saat cutloss trigger
+      let lossBatch = 0;
+      for(let j = 1; j <= positionsPerBatch; j++){
+        const lossPips = batchCutLossPips + (positionsPerBatch - j) * addPositionPips;
+        lossBatch += lots[j-1] * lossPips * pipValue;
+      }
+
+      const prevCumLoss = cumulativeLoss;
+      cumulativeLoss = resetToOne ? 0 : (cumulativeLoss + lossBatch);
+
+      const baseTp = tpUsc > 0 ? tpUsc : (tpPips * pipValue * totalLot);
+      const targetProfit = baseTp + (effN > 1 ? prevCumLoss : 0);
+
+      const marginRequired = (totalLot * contractSize * price) / leverage;
+      const modalRaw = prevCumLoss + lossBatch + marginRequired;
+      const modalNeeded = modalRaw * (1 + bufferPct/100);
+
+      rows.push({
+        batch: n,
+        resetToOne,
+        totalLot: +totalLot.toFixed(2),
+        lossBatch: +lossBatch.toFixed(2),
+        cumulativeLoss: +cumulativeLoss.toFixed(2),
+        targetProfit: +targetProfit.toFixed(2),
+        marginRequired: +marginRequired.toFixed(2),
+        modalNeeded: +modalNeeded.toFixed(2)
+      });
+
+      accumLot = resetToOne ? 0 : (accumLot + totalLot);
+    }
+    return rows;
+  }
+
+  self.onmessage = function(e){
+    const params = e.data;
+    const key = JSON.stringify(params);
+    if(cache.has(key)){
+      self.postMessage({ rows: cache.get(key), fromCache: true });
+      return;
+    }
+    const rows = computeBatches(params);
+    if(cache.size >= CACHE_LIMIT){
+      const firstKey = cache.keys().next().value;
+      cache.delete(firstKey);
+    }
+    cache.set(key, rows);
+    self.postMessage({ rows, fromCache: false });
+  };
+`;
+const blob = new Blob([workerSrc], {type:'application/javascript'});
+const worker = new Worker(URL.createObjectURL(blob));
+
+function fmt(n){
+  return n.toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function readParams(){
+  return {
+    initialLot: parseFloat(document.getElementById('initialLot').value) || 0.01,
+    positionsPerBatch: parseInt(document.getElementById('positionsPerBatch').value) || 1,
+    maxBatchNumber: parseInt(document.getElementById('maxBatchNumber').value) || 0,
+    simBatches: Math.min(200, parseInt(document.getElementById('simBatches').value) || 1),
+    maxLotLimit: parseFloat(document.getElementById('maxLotLimit').value) || 0,
+    addPositionPips: parseFloat(document.getElementById('addPositionPips').value) || 0,
+    batchCutLossPips: parseFloat(document.getElementById('batchCutLossPips').value) || 0,
+    tpPips: parseFloat(document.getElementById('tpPips').value) || 0,
+    tpUsc: parseFloat(document.getElementById('tpUsc').value) || 0,
+    pipValue: parseFloat(document.getElementById('pipValue').value) || 1,
+    price: parseFloat(document.getElementById('price').value) || 1,
+    leverage: parseFloat(document.getElementById('leverage').value) || 1,
+    contractSize: parseFloat(document.getElementById('contractSize').value) || 1,
+    bufferPct: parseFloat(document.getElementById('bufferPct').value) || 0
+  };
+}
+
+function render(rows, fromCache){
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.batch}${r.resetToOne ? ' <span class="warn">(reset)</span>' : ''}</td>
+      <td>${r.totalLot.toFixed(2)}</td>
+      <td class="loss">-${fmt(r.lossBatch)}</td>
+      <td class="loss">-${fmt(r.cumulativeLoss)}</td>
+      <td class="profit">+${fmt(r.targetProfit)}</td>
+      <td>${fmt(r.marginRequired)}</td>
+      <td class="warn">${fmt(r.modalNeeded)}</td>
+    </tr>
+  `).join('');
+
+  const last = rows[rows.length - 1];
+  const maxModal = Math.max(...rows.map(r=>r.modalNeeded));
+  const summary = document.getElementById('summary');
+  summary.innerHTML = `
+    <div class="stat"><div class="k">Total Lot Batch Akhir</div><div class="v">${last.totalLot.toFixed(2)}</div></div>
+    <div class="stat"><div class="k">Loss Batch Akhir</div><div class="v loss">-${fmt(last.lossBatch)}</div></div>
+    <div class="stat"><div class="k">Akumulasi Loss</div><div class="v loss">-${fmt(last.cumulativeLoss)}</div></div>
+    <div class="stat"><div class="k">Modal Aman Disarankan</div><div class="v gold">${fmt(maxModal)}</div></div>
+  `;
+
+  document.getElementById('status').textContent =
+    (fromCache ? 'Diambil dari cache worker · ' : 'Dihitung ulang oleh worker · ') + rows.length + ' batch';
+}
+
+worker.onmessage = (e) => render(e.data.rows, e.data.fromCache);
+
+document.getElementById('calc').addEventListener('click', () => {
+  document.getElementById('status').textContent = 'Menghitung...';
+  worker.postMessage(readParams());
+});
+
+// hitung otomatis saat load pertama
+worker.postMessage(readParams());
+</script>
+</body>
+</html>
