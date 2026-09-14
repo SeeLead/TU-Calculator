@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="1.2.0">
+<meta name="app-version" content="1.3.0">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -176,16 +176,16 @@
         <input type="number" id="tpPips" value="90" step="1">
       </div>
       <div class="field">
-        <label>TP (USD, 0=pakai pips)</label>
+        <label>TP (USC, 0=pakai pips)</label>
         <input type="number" id="tpUsc" value="0" step="1" min="0">
       </div>
     </div>
 
     <h2>Nilai Kontrak</h2>
     <div class="field">
-      <label>Nilai per Pip / 1 Lot (USD)</label>
+      <label>Nilai per Pip / 1 Lot (USC)</label>
       <input type="number" id="pipValue" value="1" step="0.01" min="0.01">
-      <div class="hint">XAUUSD umumnya ≈ 1 USD/pip/lot bila pip = 0.01 — cek spesifikasi broker Anda.</div>
+      <div class="hint">XAUUSD umumnya ≈ 1 USC/pip/lot bila pip = 0.01 — cek spesifikasi broker Anda.</div>
     </div>
 
     <button id="calc">Hitung Batch</button>
@@ -203,10 +203,9 @@
         <tr>
           <th>Batch</th>
           <th>Total Lot</th>
-          <th>Loss Batch (USD)</th>
-          <th>Akumulasi Loss (USD)</th>
-          <th>Target Profit (USD)</th>
-          <th>Modal Diperlukan (USD)</th>
+          <th>Loss Batch (USC)</th>
+          <th>Akumulasi Loss (USC)</th>
+          <th>Target Profit (USC)</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -214,7 +213,7 @@
     </div>
 
     <div class="note">
-      <b>Cara baca:</b> "Loss Batch" adalah estimasi rugi terealisasi bila seluruh posisi pada batch tersebut kena cutloss (grid penuh terisi lalu bergerak melawan sejauh Batch Cutloss Pips). "Target Profit" adalah profit basket yang harus tercapai batch tersebut untuk TP, sudah termasuk mengembalikan akumulasi loss batch sebelumnya. "Modal Diperlukan" = akumulasi loss batch sebelumnya + potensi floating loss batch berjalan saat itu (margin tidak dihitung). Semua angka adalah estimasi berbasis logika grid EA (level demi level dari titik anchor), bukan hasil backtest — spread, slippage, swap, dan pergerakan harga aktual tidak diperhitungkan.
+      <b>Cara baca:</b> "Loss Batch" adalah estimasi rugi terealisasi bila seluruh posisi pada batch tersebut kena cutloss (grid penuh terisi lalu bergerak melawan sejauh Batch Cutloss Pips). "Akumulasi Loss" adalah total rugi dari batch ke-1 sampai batch tersebut — angka ini sekaligus mencerminkan modal yang perlu disiapkan agar bisa bertahan sampai batch tersebut. "Target Profit" adalah profit basket yang harus tercapai batch tersebut untuk TP, sudah termasuk mengembalikan akumulasi loss batch sebelumnya. Semua angka adalah estimasi berbasis logika grid EA (level demi level dari titik anchor), bukan hasil backtest — spread, slippage, swap, dan pergerakan harga aktual tidak diperhitungkan.
     </div>
   </div>
 </main>
@@ -274,16 +273,13 @@ const workerSrc = `
       const baseTp = tpUsc > 0 ? tpUsc : (tpPips * pipValue * totalLot);
       const targetProfit = baseTp + (effN > 1 ? prevCumLoss : 0);
 
-      const modalNeeded = prevCumLoss + lossBatch;
-
       rows.push({
         batch: n,
         resetToOne,
         totalLot: +totalLot.toFixed(2),
         lossBatch: +lossBatch.toFixed(2),
         cumulativeLoss: +cumulativeLoss.toFixed(2),
-        targetProfit: +targetProfit.toFixed(2),
-        modalNeeded: +modalNeeded.toFixed(2)
+        targetProfit: +targetProfit.toFixed(2)
       });
 
       accumLot = resetToOne ? 0 : (accumLot + totalLot);
@@ -338,18 +334,16 @@ function render(rows, fromCache){
       <td class="loss">-${fmt(r.lossBatch)}</td>
       <td class="loss">-${fmt(r.cumulativeLoss)}</td>
       <td class="profit">+${fmt(r.targetProfit)}</td>
-      <td class="warn">${fmt(r.modalNeeded)}</td>
     </tr>
   `).join('');
 
   const last = rows[rows.length - 1];
-  const maxModal = Math.max(...rows.map(r=>r.modalNeeded));
   const summary = document.getElementById('summary');
   summary.innerHTML = `
     <div class="stat"><div class="k">Total Lot Batch Akhir</div><div class="v">${last.totalLot.toFixed(2)}</div></div>
     <div class="stat"><div class="k">Loss Batch Akhir</div><div class="v loss">-${fmt(last.lossBatch)}</div></div>
     <div class="stat"><div class="k">Akumulasi Loss</div><div class="v loss">-${fmt(last.cumulativeLoss)}</div></div>
-    <div class="stat"><div class="k">Modal Aman Disarankan</div><div class="v gold">${fmt(maxModal)}</div></div>
+    <div class="stat"><div class="k">Target Profit Batch Akhir</div><div class="v profit">+${fmt(last.targetProfit)}</div></div>
   `;
 
   document.getElementById('status').textContent =
